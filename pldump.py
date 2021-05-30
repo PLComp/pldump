@@ -1,9 +1,8 @@
 ﻿import json
 import configparser
 from pathlib import Path
-from telethon import TelegramClient
-from telethon.tl import types
 from collections import namedtuple
+from pyrogram import Client
 
 Message = namedtuple('Message', 'id author date text tags')
 
@@ -13,20 +12,18 @@ def fix_entity(text):
 
 
 def parse_entity(entity, data):
-    if isinstance(entity, types.MessageEntityBold):
+    if entity.type == 'bold':
         return fix_entity(f'**{data}**')
-    elif isinstance(entity, types.MessageEntityItalic):
+    elif entity.type == 'italic':
         return fix_entity(f'*{data}*')
-    elif isinstance(entity, types.MessageEntityUrl):
+    elif entity.type == 'url':
         return fix_entity(f'[{data}]({data})')
-    elif isinstance(entity, types.MessageEntityTextUrl):
+    elif entity.type == 'text_link':
         return fix_entity(f'[{data}]({entity.url})')
-    elif isinstance(entity, types.MessageEntityCode):
+    elif entity.type == 'code':
         return f'`{data}`'
-    elif isinstance(entity, types.MessageEntityPre):
+    elif entity.type == 'pre':
         return f'<pre>{data}</pre>'
-    elif isinstance(entity, types.MessageEntityHashtag):
-        return ''
     return data
 
 
@@ -42,31 +39,29 @@ def parse_text(text, entities):
     return ''.join(result).strip()
 
 
-def parse_tags(text):
-    last_line = text.strip().split('\n').pop()
-    if last_line.startswith('#'):
-        return [tag[1:] for tag in last_line.split() if tag.startswith('#')]
-    return []
+def parse_message(text, entities):
+    lines = parse_text(text, entities).split('\n')
+    tags = []
+    if lines[-1].startswith('#'):
+        tags = [tag[1:] for tag in lines[-1].split() if tag.startswith('#')]
+        lines.pop()
+    return '\n'.join(lines), tags
 
 
 def pldump(conf):
-    client = TelegramClient(conf['channel_name'],
-                            conf['api_id'], conf['api_hash'])
+    app = Client('pldump', conf['api_id'], conf['api_hash'])
     messages = []
-
-    async def task():
-        group = await client.get_entity(conf['channel_url'])
-        async for m in client.iter_messages(group):
-            if m.message:
+    with app:
+        for m in app.iter_history(conf['channel_name']):
+            if m.text:
+                text, tags = parse_message(m.text, m.entities)
                 messages.append(Message(
-                    id=m.id,
-                    author=m.post_author,
-                    date=(m.date.year, m.date.month, m.date.day),
-                    text=parse_text(m.message, m.entities),
-                    tags=parse_tags(m.message)
+                    id=m.message_id,
+                    author=m.from_user.username if m.from_user else None,
+                    date=m.date,
+                    text=text,
+                    tags=tags
                 ))
-    with client:
-        client.loop.run_until_complete(task())
     return messages
 
 
