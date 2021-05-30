@@ -2,6 +2,7 @@
 import configparser
 from pathlib import Path
 from collections import namedtuple
+from datetime import datetime
 from pyrogram import Client
 
 Message = namedtuple('Message', 'id author date text tags')
@@ -23,7 +24,7 @@ def parse_entity(entity, data):
     elif entity.type == 'code':
         return f'`{data}`'
     elif entity.type == 'pre':
-        return f'<pre>{data}</pre>'
+        return '```\n' + data + '```\n'
     return data
 
 
@@ -57,8 +58,8 @@ def pldump(conf):
                 text, tags = parse_message(m.text, m.entities)
                 messages.append(Message(
                     id=m.message_id,
-                    author=m.from_user.username if m.from_user else None,
-                    date=m.date,
+                    author=m.author_signature,
+                    date=datetime.fromtimestamp(m.date),
                     text=text,
                     tags=tags
                 ))
@@ -66,6 +67,8 @@ def pldump(conf):
 
 
 if __name__ == '__main__':
+    import sys
+    sys.stdout.reconfigure(encoding='utf-8')
     conf = configparser.ConfigParser()
     conf.read('plcomp.ini')
     messages = pldump(conf['dump'])
