@@ -40,11 +40,11 @@ def parse_text(text, entities):
 
 
 def parse_message(text, entities):
-    lines = parse_text(text, entities).split('\n')
-    tags = []
-    if lines[-1].startswith('#'):
-        tags = [tag[1:] for tag in lines[-1].split() if tag.startswith('#')]
+    lines, tags = parse_text(text, entities).split('\n'), []
+    last_line = lines[-1].strip()
+    if last_line.startswith('#'):
         lines.pop()
+        tags = [tag[1:] for tag in last_line.split() if tag.startswith('#')]
     return '\n'.join(lines), tags
 
 
