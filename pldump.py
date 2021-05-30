@@ -28,7 +28,7 @@ def parse_entity(entity, data):
     return ''
 
 
-def parse_message(text, entities):
+def parse_text(text, entities):
     entities = sorted(entities, key=lambda e: e.offset)
     result = []
     pos = 0
@@ -60,7 +60,7 @@ def pldump(conf):
                     id=m.id,
                     author=m.post_author,
                     date=(m.date.year, m.date.month, m.date.day),
-                    text=parse_message(m.message, m.entities),
+                    text=parse_text(m.message, m.entities),
                     tags=parse_tags(m.message)
                 ))
     with client:
