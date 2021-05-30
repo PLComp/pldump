@@ -24,7 +24,7 @@ def parse_entity(entity, data):
     elif entity.type == 'code':
         return f'`{data}`'
     elif entity.type == 'pre':
-        return '```\n' + data + '```\n'
+        return f'```\n{data}```\n'
     return data
 
 
