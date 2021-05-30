@@ -24,7 +24,7 @@ def parse_entity(entity, data):
     elif entity.type == 'code':
         return f'`{data}`'
     elif entity.type == 'pre':
-        return f'```\n{data}```\n'
+        return f'```\n{data.strip()}\n```\n'
     return data
 
 
@@ -73,6 +73,6 @@ if __name__ == '__main__':
     conf.read('plcomp.ini')
     messages = pldump(conf['dump'])
     for m in messages:
-        print(m.author, m.date, m.tags)
+        print(f'#### {m.author}, {m.date}')
         print(m.text)
-        print()
+        print(m.tags)
