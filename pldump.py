@@ -25,7 +25,9 @@ def parse_entity(entity, data):
         return f'`{data}`'
     elif isinstance(entity, types.MessageEntityPre):
         return f'<pre>{data}</pre>'
-    return ''
+    elif isinstance(entity, types.MessageEntityHashtag):
+        return ''
+    return data
 
 
 def parse_text(text, entities):
