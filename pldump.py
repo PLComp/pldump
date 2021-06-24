@@ -2,9 +2,10 @@
 import configparser
 import argparse
 import contextlib
-
+import json
+import datetime
 from collections import namedtuple
-from datetime import datetime
+
 from pyrogram import Client
 
 Message = namedtuple('Message', 'id author date text tags')
@@ -51,7 +52,7 @@ def parse_message(text, entities):
     return '\n'.join(lines), tags
 
 
-def pldump(conf):
+def download(conf):
     app = Client('pldump', conf['api_id'], conf['api_hash'])
     messages = []
     with app:
@@ -61,11 +62,43 @@ def pldump(conf):
                 messages.append(Message(
                     id=m.message_id,
                     author=m.author_signature,
-                    date=datetime.fromtimestamp(m.date),
+                    date=datetime.datetime.fromtimestamp(m.date),
                     text=text,
                     tags=tags
                 ))
     return messages
+
+
+def dump_markdown(messages):
+    for m in messages:
+        message_str = (
+            f'{m.text}\n'
+            '\n'
+            f'{m.tags}\n'
+            '\n'
+            f'{m.author + ", " if m.author else ""}{m.date}\n'
+        )
+        print(message_str)
+
+
+def dump_json(messages):
+    # NOTE: convoluted as to covert namedtuples to json dicts we need to call
+    # the _asdict method instead of serializing the whole message list
+    m_strs = []
+    for m in messages:
+        def datetime_serializer(f):
+            if isinstance(f, datetime.datetime):
+                return f.isoformat()
+        m_str = json.dumps(m._asdict(), default=datetime_serializer,
+                           sort_keys=True, indent=4, ensure_ascii=False)
+        m_strs.append(m_str)
+    print('[\n' + ',\n'.join(m_strs) + '\n]')
+
+
+DUMPERS = {
+    'markdown': dump_markdown,
+    'json': dump_json,
+}
 
 
 if __name__ == '__main__':
@@ -78,19 +111,14 @@ if __name__ == '__main__':
                         type=argparse.FileType('r', encoding='utf-8'))
     parser.add_argument('--output', default=sys.stdout,
                         type=argparse.FileType('w', encoding='utf-8'))
+    parser.add_argument('--output-type', default='markdown',
+                        choices=DUMPERS.keys())
     args = parser.parse_args()
 
     conf = configparser.ConfigParser()
     conf.read_file(args.config)
 
-    messages = pldump(conf['dump'])
+    messages = download(conf['dump'])
+    dumper = DUMPERS[args.output_type]
     with contextlib.redirect_stdout(args.output):
-        for m in messages:
-            message_str = (
-                f'{m.text}\n'
-                '\n'
-                f'{m.tags}\n'
-                '\n'
-                f'{m.author + ", " if m.author else ""}{m.date}\n'
-            )
-            print(message_str)
+        dumper(messages)
