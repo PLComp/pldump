@@ -1,6 +1,8 @@
-﻿import json
+﻿import sys
 import configparser
-from pathlib import Path
+import argparse
+import contextlib
+
 from collections import namedtuple
 from datetime import datetime
 from pyrogram import Client
@@ -67,12 +69,28 @@ def pldump(conf):
 
 
 if __name__ == '__main__':
-    import sys
     sys.stdout.reconfigure(encoding='utf-8')
+
+    parser = argparse.ArgumentParser(
+        description='Download PLComp notes using the Telegrap API'
+    )
+    parser.add_argument('--config', default='plcomp.ini',
+                        type=argparse.FileType('r', encoding='utf-8'))
+    parser.add_argument('--output', default=sys.stdout,
+                        type=argparse.FileType('w', encoding='utf-8'))
+    args = parser.parse_args()
+
     conf = configparser.ConfigParser()
-    conf.read('plcomp.ini')
+    conf.read_file(args.config)
+
     messages = pldump(conf['dump'])
-    for m in messages:
-        print(f'#### {m.author}, {m.date}')
-        print(m.text)
-        print(m.tags)
+    with contextlib.redirect_stdout(args.output):
+        for m in messages:
+            message_str = (
+                f'{m.text}\n'
+                '\n'
+                f'{m.tags}\n'
+                '\n'
+                f'{m.author + ", " if m.author else ""}{m.date}\n'
+            )
+            print(message_str)
